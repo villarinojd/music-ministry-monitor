@@ -81,11 +81,14 @@ export default function MonitoringForm({ userName, onSubmitSuccess }: Monitoring
   };
 
   const handleCheckboxChange = (category: string, item: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: { ...prev[category as keyof FormData], [item]: value },
-    }));
-  };
+  setFormData((prev) => ({
+    ...prev,
+    [category]: {
+      ...(prev[category as keyof FormData] as Record<string, string>),
+      [item]: value,
+    },
+  }));
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
