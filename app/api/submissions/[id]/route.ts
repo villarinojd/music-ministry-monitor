@@ -1,18 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const dataDir = path.join(process.cwd(), 'data');
-
-async function getSubmissionsFile() {
-  try {
-    const filePath = path.join(dataDir, 'submissions.json');
-    const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
+import { getSubmissionById } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
@@ -20,9 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const submissions = await getSubmissionsFile();
-
-    const submission = submissions.find((sub: any) => sub.id === id);
+    const submission = await getSubmissionById(id);
 
     if (!submission) {
       return NextResponse.json(
@@ -34,8 +19,9 @@ export async function GET(
     return NextResponse.json(submission);
   } catch (error) {
     console.error('Error fetching submission:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch submission' },
+      { error: `Failed to fetch submission: ${message}` },
       { status: 500 }
     );
   }

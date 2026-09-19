@@ -188,7 +188,7 @@ export default function SubmissionHistory({ userName }: SubmissionHistoryProps) 
                       <div key={key} className="bg-gray-50 dark:bg-slate-700 p-3 rounded">
                         <p className="text-gray-600 dark:text-gray-400 text-xs">{key}</p>
                         <p className="text-gray-800 dark:text-white font-semibold">
-                          {value ? String(value) : '—'}
+                          {typeof value === 'boolean' ? (value ? '✓' : '—') : value ? String(value) : '—'}
                         </p>
                       </div>
                     ))

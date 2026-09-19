@@ -12,7 +12,7 @@ interface FormData {
   practices: Record<string, string>;
   performances: Record<string, string>;
   ministryRequirements: Record<string, string>;
-  personalWalk: Record<string, string>;
+  personalWalk: Record<string, boolean>;
 }
 
 const attendanceItems = [
@@ -81,14 +81,21 @@ export default function MonitoringForm({ userName, onSubmitSuccess }: Monitoring
   };
 
   const handleCheckboxChange = (category: string, item: string, value: string) => {
-  setFormData((prev) => ({
-    ...prev,
-    [category]: {
-      ...(prev[category as keyof FormData] as Record<string, string>),
-      [item]: value,
-    },
-  }));
-};
+    setFormData((prev) => ({
+      ...prev,
+      [category]: {
+        ...(prev[category as keyof FormData] as Record<string, string>),
+        [item]: value,
+      },
+    }));
+  };
+
+  const handlePersonalWalkToggle = (item: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      personalWalk: { ...prev.personalWalk, [item]: checked },
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,10 +115,12 @@ export default function MonitoringForm({ userName, onSubmitSuccess }: Monitoring
           onSubmitSuccess();
         }, 1500);
       } else {
-        setMessage('✗ Error saving submission');
+        const data = await response.json().catch(() => ({}));
+        setMessage(`✗ ${data.error || `Error saving submission (status ${response.status})`}`);
       }
     } catch (error) {
-      setMessage('✗ Error submitting form');
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      setMessage(`✗ Error submitting form: ${msg}`);
       console.error(error);
     } finally {
       setLoading(false);
@@ -284,22 +293,19 @@ export default function MonitoringForm({ userName, onSubmitSuccess }: Monitoring
       {/* Personal Walk Section */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2">
-          Personal Walk (Numeric Values)
+          Personal Walk
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {personalWalkItems.map((item) => (
-            <div key={item}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                {item}
-              </label>
+            <label key={item} className="flex items-center space-x-2 text-gray-700 dark:text-gray-200">
               <input
-                type="number"
-                value={formData.personalWalk[item] || ''}
-                onChange={(e) => handleCheckboxChange('personalWalk', item, e.target.value)}
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white"
+                type="checkbox"
+                checked={formData.personalWalk[item] || false}
+                onChange={(e) => handlePersonalWalkToggle(item, e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
               />
-            </div>
+              <span className="text-sm">{item}</span>
+            </label>
           ))}
         </div>
       </div>
