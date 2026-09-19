@@ -3,17 +3,21 @@
 import { useState, useEffect } from 'react';
 import MonitoringForm from '@/components/MonitoringForm';
 import SubmissionHistory from '@/components/SubmissionHistory';
+import AdminView from '@/components/AdminView';
+import { ADMIN_KEY } from '@/lib/adminAuth';
 
-type View = 'login' | 'form' | 'history';
+type View = 'login' | 'form' | 'history' | 'admin' | 'adminEdit';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<View>('login');
   const [userName, setUserName] = useState('');
   const [inputName, setInputName] = useState('');
+  const [editSubmissionId, setEditSubmissionId] = useState<string | null>(null);
+  const [adminEditId, setAdminEditId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('currentUser');
-    if (saved) {
+    if (saved && saved !== ADMIN_KEY) {
       setUserName(saved);
       setCurrentView('form');
     }
@@ -21,23 +25,47 @@ export default function Home() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputName.trim()) {
-      localStorage.setItem('currentUser', inputName);
-      setUserName(inputName);
-      setCurrentView('form');
+    const trimmed = inputName.trim();
+    if (!trimmed) return;
+
+    if (trimmed === ADMIN_KEY) {
+      setUserName(trimmed);
+      setCurrentView('admin');
+      return;
     }
+
+    localStorage.setItem('currentUser', trimmed);
+    setUserName(trimmed);
+    setCurrentView('form');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
     setUserName('');
     setInputName('');
+    setEditSubmissionId(null);
+    setAdminEditId(null);
     setCurrentView('login');
+  };
+
+  const goToNewEntry = () => {
+    setEditSubmissionId(null);
+    setCurrentView('form');
+  };
+
+  const handleEdit = (id: string) => {
+    setEditSubmissionId(id);
+    setCurrentView('form');
+  };
+
+  const handleAdminEdit = (id: string) => {
+    setAdminEditId(id);
+    setCurrentView('adminEdit');
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto p-4 max-w-4xl">
+      <div className="container mx-auto p-4 max-w-6xl">
         <header className="mb-8 pt-8">
           <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
             Music Ministry Monitor
@@ -74,6 +102,45 @@ export default function Home() {
               </button>
             </form>
           </div>
+        ) : currentView === 'admin' ? (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-lg shadow">
+              <p className="text-lg font-semibold text-gray-800 dark:text-white">Admin View</p>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                Exit
+              </button>
+            </div>
+            <AdminView onEdit={handleAdminEdit} />
+          </div>
+        ) : currentView === 'adminEdit' ? (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-lg shadow">
+              <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                Admin View — Editing Entry
+              </p>
+              <button
+                onClick={() => {
+                  setAdminEditId(null);
+                  setCurrentView('admin');
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                Back to Admin
+              </button>
+            </div>
+            <MonitoringForm
+              key={adminEditId}
+              userName=""
+              editSubmissionId={adminEditId}
+              onSubmitSuccess={() => {
+                setAdminEditId(null);
+                setCurrentView('admin');
+              }}
+            />
+          </div>
         ) : (
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-lg shadow">
@@ -83,10 +150,10 @@ export default function Home() {
               </div>
               <div className="space-x-2">
                 <button
-                  onClick={() => setCurrentView(currentView === 'form' ? 'history' : 'form')}
+                  onClick={() => (currentView === 'form' ? setCurrentView('history') : goToNewEntry())}
                   className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
                 >
-                  {currentView === 'form' ? 'View History' : 'Back to Form'}
+                  {currentView === 'form' ? 'View History' : 'New Entry'}
                 </button>
                 <button
                   onClick={handleLogout}
@@ -98,9 +165,17 @@ export default function Home() {
             </div>
 
             {currentView === 'form' ? (
-              <MonitoringForm userName={userName} onSubmitSuccess={() => setCurrentView('history')} />
+              <MonitoringForm
+                key={editSubmissionId ?? 'new'}
+                userName={userName}
+                editSubmissionId={editSubmissionId}
+                onSubmitSuccess={() => {
+                  setEditSubmissionId(null);
+                  setCurrentView('history');
+                }}
+              />
             ) : (
-              <SubmissionHistory userName={userName} />
+              <SubmissionHistory userName={userName} onEdit={handleEdit} />
             )}
           </div>
         )}

@@ -1,9 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addSubmission, getSubmissionsByUser, getAllSubmissions, Submission } from '@/lib/db';
+import {
+  addSubmission,
+  getSubmissionsByUser,
+  getSubmissionByUserAndWeek,
+  getAllSubmissions,
+  Submission,
+} from '@/lib/db';
+import { ADMIN_KEY } from '@/lib/adminAuth';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    if (!body.name || !body.week) {
+      return NextResponse.json({ error: 'Name and week are required' }, { status: 400 });
+    }
+
+    const existing = await getSubmissionByUserAndWeek(body.name, body.week);
+    if (existing) {
+      return NextResponse.json(
+        {
+          error: 'duplicate',
+          message: `${body.name} already has an entry for the week of ${new Date(
+            body.week
+          ).toLocaleDateString()}.`,
+          existingId: existing.id,
+        },
+        { status: 409 }
+      );
+    }
 
     const newSubmission: Submission = {
       id: Date.now().toString(),
@@ -31,24 +56,22 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const userName = searchParams.get('userName');
+    const adminKey = searchParams.get('adminKey');
 
     if (userName) {
-      const userSubmissions = await getSubmissionsByUser(userName);
-      const summaries = userSubmissions.map((sub) => ({
-        id: sub.id,
-        name: sub.name,
-        week: sub.week,
-        ministry: sub.ministry,
-        voice: sub.voice,
-        bibleVerse: sub.bibleVerse,
-        submittedAt: sub.submittedAt,
-      }));
-
-      return NextResponse.json({ submissions: summaries });
+      const submissions = await getSubmissionsByUser(userName);
+      return NextResponse.json({ submissions });
     }
 
-    const submissions = await getAllSubmissions();
-    return NextResponse.json({ submissions });
+    if (adminKey === ADMIN_KEY) {
+      const submissions = await getAllSubmissions();
+      return NextResponse.json({ submissions });
+    }
+
+    return NextResponse.json(
+      { error: 'userName or a valid adminKey is required' },
+      { status: 400 }
+    );
   } catch (error) {
     console.error('Error fetching submissions:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
